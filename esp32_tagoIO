@@ -1,0 +1,51 @@
+//Envio de Dados para tagoIO via MQTT
+
+#include <ArduinoJson.h>
+#include "EspMQTTClient.h"
+
+//variáveis para Json
+char teste[100];
+int variavel;
+
+//configurações da conexão MQTT
+EspMQTTClient client
+(
+  "Nome da Rede", //nome da sua rede Wi-Fi
+  "senha", //senha da sua rede Wi-Fi
+  "mqtt.tago.io",  // MQTT Broker server ip padrão da tago
+  "Default",   // username
+  "cole o código do token",   // Código do Token 
+  "TestClient",     // Client name that uniquely identify your device
+  1883              // The MQTT port, default to 1883. this line can be omitted
+);
+
+void setup (){}
+
+// This function is called once everything is connected (Wifi and MQTT)
+// WARNING : YOU MUST IMPLEMENT IT IF YOU USE EspMQTTClient
+void onConnectionEstablished()
+{}
+
+void loop()
+{
+
+//atribui valores aleatórios para variável 
+  variavel = random(0,10);
+
+//arquivo Json
+
+  StaticJsonDocument<300> dados;
+
+  dados["variable"] = "dado_teste"; 
+  dados["value"] = variavel;
+
+  serializeJson(dados, teste);
+
+//envio de dados
+
+  client.publish("info/teste", teste); // You can activate the retain flag by setting the third parameter to true
+  
+  delay(1000);
+
+  client.loop();
+}
