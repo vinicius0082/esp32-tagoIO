@@ -1,0 +1,87 @@
+//Envio de Dados para tagoIO via MQTT
+
+#include <ArduinoJson.h>
+#include "EspMQTTClient.h"
+#include <Wire.h>
+
+//variáveis para Json
+
+char acelz[100];
+char acelx[100];
+
+//variáveis do MPU
+const int MPU = 0x68;
+int AcX, AcY, AcZ, GyX, GyY, GyZ, Tmp;
+
+//configurações da conexão MQTT
+EspMQTTClient client
+(
+  "Nome da Rede", //nome da sua rede Wi-Fi
+  "senha", //senha da sua rede Wi-Fi
+  "mqtt.tago.io",  // MQTT Broker server ip padrão da tago
+  "Default",   // username
+  "cole o código do token",   // Código do Token 
+  "TestClient",     // Client name that uniquely identify your device
+  1883              // The MQTT port, default to 1883. this line can be omitted
+);
+
+//configuração do MPU
+void setup()
+{
+  Serial.begin(115200);
+  //configurações de comunicação do MPU via protocolo I2C
+  Wire.begin();
+  Wire.beginTransmission(MPU);
+  Wire.write(0x6B);
+  Wire.write(0);
+  Wire.endTransmission(true);
+}
+
+// This function is called once everything is connected (Wifi and MQTT)
+// WARNING : YOU MUST IMPLEMENT IT IF YOU USE EspMQTTClient
+void onConnectionEstablished()
+{}
+
+//loop do programa
+void loop()
+{
+ 
+//conexão e obtençãos dos dados do MPU
+  Wire.beginTransmission(MPU);
+  Wire.write(0x3B);
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU, 14, true);
+  //Armazena o valor dos sensores nas variaveis correspondentes
+  AcX = Wire.read() << 8 | Wire.read(); //0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
+  AcY = Wire.read() << 8 | Wire.read(); //0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+  AcZ = Wire.read() << 8 | Wire.read(); //0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+  Tmp = Wire.read() << 8 | Wire.read(); //0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
+  GyX = Wire.read() << 8 | Wire.read(); //0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
+  GyY = Wire.read() << 8 | Wire.read(); //0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
+  GyZ = Wire.read() << 8 | Wire.read(); //0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
+
+//arquivo Json
+
+  StaticJsonDocument<300> acelZ;
+
+  acelZ["variable"] = "Acelz";
+  acelZ["value"] = AcZ;
+
+  serializeJson(acelZ, acelz);
+  
+  StaticJsonDocument<300> acelX;
+
+  acelX["variable"] = "Acelx";
+  acelX["value"] = AcX;
+
+  serializeJson(acelX, acelx);
+
+
+//envio de dados
+
+  client.publish("info/acelz", acelz); // You can activate the retain flag by setting the third parameter to true
+  client.publish("info/acelx", acelx); // You can activate the retain flag by setting the third parameter to true
+  delay(1000);
+
+  client.loop();
+}
